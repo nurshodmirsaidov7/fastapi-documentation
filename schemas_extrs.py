@@ -1,5 +1,6 @@
-# # from pydantic import BaseModel
-# # from typing import Optional
+from pydantic import BaseModel, Field, computed_field, field_validator, model_validator, field_serializer
+from typing import Optional, Generic, TypeVar
+from pydantic.config import ConfigDict
 
 # # class SignUpModel(BaseModel):
 # #     username: str
@@ -24,8 +25,6 @@
 
 
 
-from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
-from typing import Optional
 
 # class User(BaseModel):
 #     name: str
@@ -189,12 +188,155 @@ john_shopping_cart = ShoppingCart(
     ]
 )
 
-print(f"Customer: {john_shopping_cart.customer_name}")
+# print(f"Customer: {john_shopping_cart.customer_name}")
 
-print("\nItems in cart:")
-for item in john_shopping_cart.items:
-    print(f"- {item.product.name}: {item.quantity} x ${item.product.price}")
+# print("\nItems in cart:")
+# for item in john_shopping_cart.items:
+#     print(f"- {item.product.name}: {item.quantity} x ${item.product.price}")
 
-# Calculate total: Note that price is inside 'product'
-total = sum(item.product.price * item.quantity for item in john_shopping_cart.items)
-print(f"\nTotal Cost: ${total:.2f}")
+# total = sum(item.product.price * item.quantity for item in john_shopping_cart.items)
+# print(f"\nTotal Cost: ${total:.2f}")
+
+
+class StrictUser(BaseModel):
+    model_config = ConfigDict(
+        str_strip_whitespace=True,
+        extra='forbid',
+        frozen=True
+    )
+
+    username: str
+    email: str
+    age: int
+
+
+# user1 = StrictUser(username='   alice    ', email=' nurshod@gmail ', age=22)
+# print(user1)
+# user2 = StrictUser(username='   alice    ', email=' nurshod@gmail ', age=22, role='admin')
+# print(user2)
+
+# user1.username = '  nurshod '
+# print(user1)
+
+
+class UserProfile(BaseModel):
+    username: str
+    email: str
+    password: str
+    age: int
+    bio: str | None = None
+    website: str | None = None
+
+    @field_serializer('password')
+    def hide_password(self, v):
+        return '*' * len(v)
+    
+
+user = UserProfile(
+    username='nurshod',
+    email='nurmirdev@gmail.com',
+    password='123455',
+    age=33
+)
+# print(user.model_dump())
+# print(user.model_dump(exclude_none=True))
+# print(user.model_dump(exclude={'password'}))
+# print(user.model_dump())
+
+# T = TypeVar('T')
+
+# class APIResponse(BaseModel, Generic[T]):
+#     success: bool
+#     data: T | None = None
+#     message: str | None = None
+
+# class User(BaseModel):
+#     name: str
+#     email: str
+
+# class Product(BaseModel):
+#     name: str
+#     price: float
+
+# user = APIResponse[User](
+#     success=True,
+#     data={'name': 'nurshod', 'email': 'nurmirdev@gmail.com'},
+#     message='Done'
+# )
+# product = APIResponse[Product](
+#     success=True,
+#     data={'name': 'apple', 'price': '12.22'},
+#     message='Done'
+# )
+
+# print(user.model_dump())
+# print(product.model_dump())
+
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+from typing import Generic, TypeVar
+from pydantic_settings import BaseSettings
+
+app = FastAPI()
+
+class BookCreate(BaseModel):
+    title: str
+    author: str
+    pages: int = Field(ge=1)
+    price: float = Field(ge=0)
+
+
+class BookResponse(BookCreate):
+    id: int
+    
+
+books_db = {}
+counter = 1
+
+@app.post('/books', response_model=BookResponse)
+async def create_book(book: BookCreate):
+    global counter
+    new_book = {'id': counter, **book.model_dump()}
+    books_db[counter] = new_book
+    counter += 1
+    return new_book
+
+@app.get('/books', response_model=list[BookResponse])
+async def list_books():
+    return list(books_db.values())
+
+
+@app.get('/books/{book_id}', response_model=BookResponse)
+async def get_book(book_id: int):
+    if book_id not in books_db:
+        raise HTTPException(status_code=404, detail='Book not found')
+    return books_db[book_id]
+
+
+
+
+class Settings(BaseSettings):
+    app_name: str = 'My Awesome API'
+    debug: bool = True
+    database_url: str
+    secret_key: str
+    max_connections: int
+    api_version: str = 'v1'
+    allowed_hosts: list[str] = ['*']
+
+    class Config:
+        env_file = '.env'
+
+setting = Settings()
+app = FastAPI(title=setting.app_name)
+
+@app.get('/settings')
+async def get_settings():
+    return {
+        'app_name': setting.app_name,
+        'debug': setting.debug,
+        'max_connections': setting.max_connections,
+        'api_version': setting.api_version,
+        
+    }

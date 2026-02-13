@@ -9,6 +9,9 @@ uvicorn = "*"
 sqlalchemy = "*"
 sqlalchemy-utils = "*"
 psycopg2-binary = "*"
+werkzeug = "*"
+asyncpg = "*"
+pydantic-settings = "*"
 
 [dev-packages]
 

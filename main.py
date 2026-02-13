@@ -13,13 +13,4 @@ app.include_router(order_router)
 async def main():
     return {'Nurshod': 'Mirsaidov'}
 
-@app.get('/full_name')
-async def get_full_name(first_name: str, last_name: str):
-    full_name = first_name.title() + " " + last_name.title()
-    return {'full name': full_name}
 
-@app.get('/items')
-async def process_items(items: list[str]):
-    for item in items:
-        return [{'message': item.capitalize() for item in items}]
-    

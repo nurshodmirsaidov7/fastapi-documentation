@@ -6,4 +6,4 @@ engine = create_async_engine('postgresql+asyncpg://postgres:nurshoddeveloper7@lo
 
 
 Base = declarative_base()
-Session = async_sessionmaker()
+session = async_sessionmaker()
